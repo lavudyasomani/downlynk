@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}download video{% endblock %}
+
+{% block content %}
+<div class="main-banner1-area">
+    <div class="container">
+        <div class="main-banner1-wrapper">
+            <h1>Powerful <span>Digital Downloads</span> Platform</h1>
+            <p>Simply paste the video URL and instantly download your favorite videos in high quality...</p>
+
+            <!-- Download Form -->
+            <form method="POST" id="downloadForm">
+                {% csrf_token %}
+                <div class="banner-search-area input-group">
+                    <input class="form-control" placeholder="Enter Video URL . . ." type="text" name="url" required id="urlInput">
+                    <span class="input-group-addon">
+                        <button type="submit" class="btn btn-primary btn-lg"
+                            style="background-color: #e74c3c; color: white; border: none; padding: 15px 20px; border-radius: 5px;">
+                            <span class="glyphicon glyphicon-download"></span> Download Video
+                        </button>
+                    </span>
+                </div>
+            </form>
+
+            <!-- Status and progress indicators -->
+            <div id="downloadStatus" style="display: none; margin-top: 15px;">
+                <p id="statusMessage">Preparing download...</p>
+                <div class="progress">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                </div>
+                <div id="spinner" style="display: none; text-align: center; margin-top: 10px;">
+                    <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading..." width="50">
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="isotope-classes-tab isotop-box-btn" style="margin-top: 20px;">
+                <a href="{% url 'download_image' %}" class="current" data-filter=".wordpress">Image Url</a>
+                <a href="{% url 'download_video' %}" data-filter=".joomla">Video Url</a>
+                <a href="{% url 'download_movie' %}" data-filter=".plugins">Movie Url</a>
+            </div>
+
+            <span>11,323,027 <span>Items For Sale</span></span>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for AJAX download -->
+<script>
+    document.getElementById("downloadForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const videoUrl = document.getElementById("urlInput").value.trim();
+        const downloadStatus = document.getElementById("downloadStatus");
+        const statusMessage = document.getElementById("statusMessage");
+        const progressBar = document.getElementById("progressBar");
+        const spinner = document.getElementById("spinner");
+
+        if (!videoUrl) {
+            showError("❌ Please enter a valid video URL.");
+            return;
+        }
+
+        // Show progress UI
+        downloadStatus.style.display = 'block';
+        spinner.style.display = 'block';
+        statusMessage.innerText = 'Preparing download...';
+        statusMessage.style.color = "white";
+        progressBar.style.width = '20%';
+
+        const formData = new FormData();
+        formData.append('url', videoUrl);
+
+        fetch("{% url 'download_video' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: formData
+        })
+        .then(response => {
+            spinner.style.display = 'none';
+
+            if (!response.ok) {
+                throw new Error("❌ Failed to download video. Invalid URL or server error.");
+            }
+
+            const disposition = response.headers.get("Content-Disposition");
+            let filename = "downloaded_video.mp4";
+            if (disposition && disposition.includes("filename=")) {
+                filename = disposition.split("filename=")[1].replace(/['"]/g, '');
+            }
+
+            return response.blob().then(blob => {
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+
+                progressBar.style.width = "100%";
+                statusMessage.innerText = "✅ Download Complete!";
+                statusMessage.style.color = "white";
+            });
+        })
+        .catch(error => {
+            showError(error.message || "❌ An error occurred.");
+        });
+
+        function showError(msg) {
+            spinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            statusMessage.innerText = msg;
+            statusMessage.style.color = "red";
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.querySelector("form");
+        const spinner = document.getElementById("spinner");
+
+        if (form && spinner) {
+            form.addEventListener("submit", function () {
+                spinner.style.display = "block";
+            });
+        }
+    });
+</script>
+{% endblock %}

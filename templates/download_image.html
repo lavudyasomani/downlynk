@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Download Image{% endblock %}
+
+{% block content %}
+<div class="main-banner1-area">
+    <div class="container">
+        <div class="main-banner1-wrapper">
+            <h1>Powerful <span>Digital Downloads</span> Platform</h1>
+            <p>Paste the Image URL and download it in HD quality...</p>
+
+            <form id="downloadForm">
+                {% csrf_token %}
+                <div class="banner-search-area input-group">
+                    <input class="form-control" placeholder="Enter Image URL..." type="url" name="url" required id="urlInput">
+                    <span class="input-group-addon">
+                        <button type="submit" class="btn btn-primary btn-lg" style="background-color: #e74c3c; color: white;">
+                            <span class="glyphicon glyphicon-download"></span> Download Image
+                        </button>
+                    </span>
+                </div>
+            </form>
+
+            <div id="downloadStatus" style="display: none; margin-top: 15px;">
+                <p id="statusMessage">Downloading...</p>
+                <div class="progress">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="isotope-classes-tab isotop-box-btn" style="margin-top: 20px;">
+                <a href="{% url 'download_image' %}" class="current">Image Url</a>
+                <a href="{% url 'download_video' %}">Video Url</a>
+                <a href="{% url 'download_movie' %}">Movie Url</a>
+            </div>
+
+            <span>11,323,027 <span>Items For Sale</span></span>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("downloadForm");
+    const urlInput = document.getElementById("urlInput");
+    const downloadStatus = document.getElementById("downloadStatus");
+    const statusMessage = document.getElementById("statusMessage");
+    const progressBar = document.getElementById("progressBar");
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const imageUrl = urlInput.value.trim();
+        if (!imageUrl || !/^https?:\/\//i.test(imageUrl)) {
+            alert("❌ Please enter a valid image URL starting with http or https.");
+            return;
+        }
+
+        downloadStatus.style.display = 'block';
+        statusMessage.innerText = 'Preparing download...';
+        progressBar.style.width = '25%';
+
+        try {
+            const formData = new FormData();
+            formData.append('url', imageUrl);
+
+            const response = await fetch("{% url 'download_image' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                statusMessage.innerText = "❌ Error: " + errorText;
+                progressBar.style.width = '0%';
+                return;
+            }
+
+            const blob = await response.blob();
+            const contentDisposition = response.headers.get("Content-Disposition");
+            let fileName = "downloaded_image.jpg";
+
+            if (contentDisposition && contentDisposition.includes("filename=")) {
+                fileName = contentDisposition.split("filename=")[1].replace(/["']/g, "");
+            }
+
+            progressBar.style.width = '70%';
+
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+
+            progressBar.style.width = '100%';
+            statusMessage.innerText = '✅ Download Complete!';
+            urlInput.value = "";
+
+            setTimeout(() => {
+                downloadStatus.style.display = 'none';
+                progressBar.style.width = '0%';
+            }, 1500);
+
+        } catch (error) {
+            console.error("Error:", error);
+            statusMessage.innerText = '❌ Unexpected error occurred.';
+            progressBar.style.width = '0%';
+        }
+    });
+});
+</script>
+{% endblock %}

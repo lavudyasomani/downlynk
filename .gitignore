@@ -1,0 +1,19 @@
+# Ignore large files and folders
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.zip
+*.tar.gz
+*.rar
+*.iso
+*.exe
+*.part
+*.aria2
+*.log
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.sqlite3
+downloads/

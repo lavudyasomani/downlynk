@@ -1,0 +1,41 @@
+
+{% extends "base.html" %}  <!-- Extend base template -->
+
+{% block title %}about{% endblock %}
+{% block content %}
+{% load static %}
+
+
+ <!-- Inner Page Banner Area Start Here -->
+ <div class="pagination-area bg-secondary">
+    <div class="container">
+        <div class="pagination-wrapper">
+            <ul>
+                <li><a href="{% url 'download_image' %}">Home</a><span> -</span></li>
+                <li>About US</li>
+            </ul>
+        </div>
+    </div>  
+</div> 
+<!-- Inner Page Banner Area End Here -->          
+<!-- About Page Start Here -->
+<div class="about-page-area bg-secondary section-space-bottom">
+    <div class="container">
+        <h2 class="title-section">To Know Who We Are</h2>
+        <div class="inner-page-details inner-page-padding">
+            <h3>What We Do</h3>
+            <p>We provide a seamless and efficient solution for downloading online content using just a URL. Our platform supports the downloading of images, videos, movies, 
+                and various media files from different websites. With a simple and clean interface, users can easily paste a link and get their desired content within seconds—no 
+                complicated steps or software installations required. Whether you're saving media for personal use, academic purposes, or creative projects, our tool simplifies 
+                the process and ensures fast, secure downloads every time.</p>
+            <h3>Our Mission</h3>
+            <p>Our mission is to make online content more accessible and user-friendly by offering a simple and reliable platform for downloading media through URLs. We aim to 
+                eliminate the barriers and technical challenges users often face when trying to save videos, images, and other media from the web. By focusing on speed, simplicity, 
+                and user experience, we strive to empower everyone—from casual users to professionals—with the tools they need to easily access and manage online content.</p>
+        </div>  
+    </div>  
+</div> 
+<!-- About Page End Here -->    
+        
+       
+ {% endblock %}

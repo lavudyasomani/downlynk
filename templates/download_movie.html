@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}download movie{% endblock %}
+{% block content %}
+
+<div class="main-banner1-area">
+    <div class="container">
+        <div class="main-banner1-wrapper">
+            <h1>Powerful <span>Movie Downloads</span> Platform</h1>
+            <p>Paste the movie URL and instantly download in high quality...</p>
+
+            <!-- Error Message Display -->
+            <div id="errorMessage" style="display: none; color: red; font-weight: bold; margin-bottom: 10px; text-align: center;"></div>
+
+            <!-- Movie Download Form -->
+            <form id="downloadMovieForm">
+                {% csrf_token %}
+                <div class="banner-search-area input-group">
+                    <input class="form-control" placeholder="Enter Movie URL . . ." type="text" name="url" required id="movieUrlInput">
+                    <span class="input-group-addon">
+                        <button type="submit" class="btn btn-primary btn-lg" style="background-color: #e74c3c; color: white; border: none; padding: 15px 20px; border-radius: 5px;">
+                            <span class="glyphicon glyphicon-download"></span> Download Movie
+                        </button>
+                    </span>
+                </div>
+            </form>
+
+            <!-- Status and progress indicators -->
+            <div id="downloadStatus" style="display: none; margin-top: 15px;">
+                <p id="statusMessage">Preparing download...</p>
+                <div class="progress">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                </div>
+                <div id="spinner" style="display: none; text-align: center; margin-top: 10px;">
+                    <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading..." width="50">
+                </div>
+            </div>
+
+            <!-- Navigation links -->
+            <div class="isotope-classes-tab isotop-box-btn">
+                <a href="{% url 'download_image' %}" class="current">Image Url</a>
+                <a href="{% url 'download_video' %}">Video Url</a>
+                <a href="{% url 'download_movie' %}">Movie Url</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.getElementById("downloadMovieForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        const urlInput = document.getElementById("movieUrlInput").value.trim();
+        const downloadStatus = document.getElementById("downloadStatus");
+        const statusMessage = document.getElementById("statusMessage");
+        const progressBar = document.getElementById("progressBar");
+        const spinner = document.getElementById("spinner");
+        const errorMessage = document.getElementById("errorMessage");
+        const csrfToken = getCookie('csrftoken');
+
+        if (!urlInput) {
+            errorMessage.innerText = "❌ Please enter a valid movie URL.";
+            errorMessage.style.display = "block";
+            return;
+        } else {
+            errorMessage.style.display = "none";
+        }
+
+        downloadStatus.style.display = 'block';
+        spinner.style.display = 'block';
+        statusMessage.innerText = "Preparing movie download...";
+        progressBar.style.width = '30%';
+
+        fetch("{% url 'download_movie' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({ url: urlInput })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Invalid movie URL or download failed.");
+            }
+            progressBar.style.width = '60%';
+            return response.blob();
+        })
+        .then(blob => {
+            spinner.style.display = 'none';
+            progressBar.style.width = "100%";
+            statusMessage.innerText = "✅ Movie Download Complete!";
+
+            const fileDownloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = fileDownloadUrl;
+            a.download = "downloaded_movie.mp4";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(fileDownloadUrl);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            progressBar.style.width = '0%';
+            errorMessage.innerText = "❌ " + error.message;
+            errorMessage.style.display = "block";
+            statusMessage.innerText = "Download failed.";
+        });
+    });
+</script>
+
+{% endblock %}
