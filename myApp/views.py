@@ -151,6 +151,133 @@ def download_image(request):
 
 #working video, audio with 1440hd video downloading in browser 
 
+# class VideoDownloadView(View):
+#     def get(self, request):
+#         """Render download page."""
+#         return render(request, "download_video.html")
+
+#     @method_decorator(csrf_exempt)
+#     def post(self, request):
+#         """Handle supercharged video downloading."""
+#         video_url = request.POST.get("url", "").strip()
+#         if not video_url:
+#             return HttpResponse("❌ No video URL provided.", status=400)
+
+#         unique_id = uuid.uuid4().hex[:6]
+#         output_folder = "downloads"
+#         os.makedirs(output_folder, exist_ok=True)
+#         output_template = os.path.join(output_folder, f"%(title)s-{unique_id}.%(ext)s")
+
+#         try:
+#             # Step 1: Probe video info
+#             probe_opts = {
+#                 'quiet': True,
+#                 'noplaylist': True,
+#                 'skip_download': True,
+#             }
+#             with yt_dlp.YoutubeDL(probe_opts) as ydl:
+#                 info = ydl.extract_info(video_url, download=False)
+#                 protocol = info.get('protocol', '')
+#                 title = info.get('title', f'video-{unique_id}')
+#                 ext = info.get('ext', 'mp4')
+
+#             # Step 2: Choose download strategy
+#             if 'm3u8' in protocol or 'dash' in protocol:
+#                 print(f"[INFO] HLS/DASH stream detected. Falling back to yt-dlp internal.")
+#                 ydl_opts = self._yt_dlp_fallback_opts(output_template)
+#             else:
+#                 print(f"[INFO] Using aria2c for fast and high-quality download.")
+#                 ydl_opts = self._aria2c_opts(output_template)
+
+#             # Step 3: Download video
+#             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+#                 info = ydl.extract_info(video_url, download=True)
+#                 file_path = ydl.prepare_filename(info)
+
+#             if not os.path.exists(file_path):
+#                 return HttpResponse("❌ File not found after download.", status=404)
+
+#             return self.serve_file(file_path, title, ext)
+
+#         except Exception as e:
+#             traceback.print_exc()
+#             return HttpResponse(f"❌ Error: {str(e)}", status=500)
+
+#     def _aria2c_opts(self, output_template):
+#         """Download using aria2c (fast, high quality, minimum 1440p)."""
+#         return {
+#             'format': '(bestvideo[height>=1440][ext=mp4]+bestaudio[ext=m4a])/bestvideo+bestaudio/best',
+#             'outtmpl': output_template,
+#             'noplaylist': True,
+#             'merge_output_format': 'mp4',
+#             'external_downloader': 'aria2c',
+#             'external_downloader_args': [
+#                 '-x', '16',   # Connections
+#                 '-s', '16',   # Segments
+#                 '-k', '5M'    # Segment size
+#             ],
+#             'prefer_ffmpeg': True,
+#             'quiet': True,
+#             'no_warnings': True,
+#             'noprogress': True,
+#             'progress_hooks': [self.progress_hook],
+#             'postprocessors': [{
+#                 'key': 'FFmpegVideoConvertor',
+#                 'preferedformat': 'mp4'
+#             }],
+#             'extractor_args': {
+#                 'generic': ['impersonate']
+#             }
+#         }
+
+#     def _yt_dlp_fallback_opts(self, output_template):
+#         """Fallback downloader for HLS/DASH or unsupported by aria2c."""
+#         return {
+#             'format': '(bestvideo[height>=1440][ext=mp4]+bestaudio[ext=m4a])/bestvideo+bestaudio/best',
+#             'outtmpl': output_template,
+#             'noplaylist': True,
+#             'merge_output_format': 'mp4',
+#             'prefer_ffmpeg': True,
+#             'quiet': True,
+#             'no_warnings': True,
+#             'noprogress': True,
+#             'progress_hooks': [self.progress_hook],
+#             'postprocessors': [{
+#                 'key': 'FFmpegVideoConvertor',
+#                 'preferedformat': 'mp4'
+#             }],
+#         }
+
+#     def progress_hook(self, d):
+#         """Logs progress."""
+#         if d['status'] == 'downloading':
+#             print(f"📥 Downloading: {d.get('_percent_str', '')} at {d.get('_speed_str', '')}")
+#         elif d['status'] == 'finished':
+#             print(f"✅ Finished: {d.get('_total_bytes_str', '')} in {d.get('_elapsed_str', '')}")
+
+#     def serve_file(self, file_path, title, ext):
+#         """Serve downloaded file."""
+#         def file_iterator(file_name, chunk_size=1024 * 1024):
+#             with open(file_name, 'rb') as f:
+#                 while chunk := f.read(chunk_size):
+#                     yield chunk
+
+#         response = StreamingHttpResponse(file_iterator(file_path), content_type='video/mp4')
+#         response['Content-Disposition'] = f'attachment; filename="{title}.{ext}"'
+#         response['Content-Length'] = os.path.getsize(file_path)
+#         return response
+
+
+import os
+import uuid
+import yt_dlp
+from django.http import HttpResponse, StreamingHttpResponse
+from django.shortcuts import render
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+import traceback
+
 class VideoDownloadView(View):
     def get(self, request):
         """Render download page."""
@@ -168,12 +295,15 @@ class VideoDownloadView(View):
         os.makedirs(output_folder, exist_ok=True)
         output_template = os.path.join(output_folder, f"%(title)s-{unique_id}.%(ext)s")
 
+        cookies_path = "youtube_cookies.txt"  # Path to your cookies file
+
         try:
-            # Step 1: Probe video info
+            # Step 1: Probe video info with cookies
             probe_opts = {
                 'quiet': True,
                 'noplaylist': True,
                 'skip_download': True,
+                'cookiefile': cookies_path,  # Use the cookies file
             }
             with yt_dlp.YoutubeDL(probe_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
@@ -184,10 +314,10 @@ class VideoDownloadView(View):
             # Step 2: Choose download strategy
             if 'm3u8' in protocol or 'dash' in protocol:
                 print(f"[INFO] HLS/DASH stream detected. Falling back to yt-dlp internal.")
-                ydl_opts = self._yt_dlp_fallback_opts(output_template)
+                ydl_opts = self._yt_dlp_fallback_opts(output_template, cookies_path)
             else:
                 print(f"[INFO] Using aria2c for fast and high-quality download.")
-                ydl_opts = self._aria2c_opts(output_template)
+                ydl_opts = self._aria2c_opts(output_template, cookies_path)
 
             # Step 3: Download video
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -203,7 +333,7 @@ class VideoDownloadView(View):
             traceback.print_exc()
             return HttpResponse(f"❌ Error: {str(e)}", status=500)
 
-    def _aria2c_opts(self, output_template):
+    def _aria2c_opts(self, output_template, cookies_path):
         """Download using aria2c (fast, high quality, minimum 1440p)."""
         return {
             'format': '(bestvideo[height>=1440][ext=mp4]+bestaudio[ext=m4a])/bestvideo+bestaudio/best',
@@ -220,6 +350,7 @@ class VideoDownloadView(View):
             'quiet': True,
             'no_warnings': True,
             'noprogress': True,
+            'cookiefile': cookies_path,  # Use the cookies file
             'progress_hooks': [self.progress_hook],
             'postprocessors': [{
                 'key': 'FFmpegVideoConvertor',
@@ -230,7 +361,7 @@ class VideoDownloadView(View):
             }
         }
 
-    def _yt_dlp_fallback_opts(self, output_template):
+    def _yt_dlp_fallback_opts(self, output_template, cookies_path):
         """Fallback downloader for HLS/DASH or unsupported by aria2c."""
         return {
             'format': '(bestvideo[height>=1440][ext=mp4]+bestaudio[ext=m4a])/bestvideo+bestaudio/best',
@@ -241,6 +372,7 @@ class VideoDownloadView(View):
             'quiet': True,
             'no_warnings': True,
             'noprogress': True,
+            'cookiefile': cookies_path,  # Use the cookies file
             'progress_hooks': [self.progress_hook],
             'postprocessors': [{
                 'key': 'FFmpegVideoConvertor',
